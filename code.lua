@@ -1,8 +1,8 @@
 p_classcode = "QJSIM"
 p_seccode = "SBER" 
-p_interval = INTERVAL_M4 -- Временной интервал
-p_bars = 140 -- Количество баров
-p_range = 5 -- Размер фрактала
+p_interval = INTERVAL_M4 -- Р’СЂРµРјРµРЅРЅРѕР№ РёРЅС‚РµСЂРІР°Р»
+p_bars = 140 -- РљРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°СЂРѕРІ
+p_range = 5 -- Р Р°Р·РјРµСЂ С„СЂР°РєС‚Р°Р»Р°
 
 if(p_range % 2 == 0) then
 	p_range = p_range + 1
@@ -12,33 +12,33 @@ if(p_range < 3) then
 	p_range = 3
 end
 
--- Определяем центр фрактала (смещение)	
+-- РћРїСЂРµРґРµР»СЏРµРј С†РµРЅС‚СЂ С„СЂР°РєС‚Р°Р»Р° (СЃРјРµС‰РµРЅРёРµ)	
 center = math.floor(p_range/2)
 
 function main()
-	-- Создаем таблицу со всеми свечами нужного интервала, класса и кода	
+	-- РЎРѕР·РґР°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРѕ РІСЃРµРјРё СЃРІРµС‡Р°РјРё РЅСѓР¶РЅРѕРіРѕ РёРЅС‚РµСЂРІР°Р»Р°, РєР»Р°СЃСЃР° Рё РєРѕРґР°	
 	ds, error_desc = CreateDataSource(p_classcode,p_seccode,p_interval)	
-	-- Ограничиваем количество попыток (времени) ожидания получения данных от сервера
+	-- РћРіСЂР°РЅРёС‡РёРІР°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРїС‹С‚РѕРє (РІСЂРµРјРµРЅРё) РѕР¶РёРґР°РЅРёСЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… РѕС‚ СЃРµСЂРІРµСЂР°
 	local try_count = 0
-	-- Ждем пока не получим данные от сервера,
-	--	либо пока не закончится время ожидания (количество попыток)
+	-- Р–РґРµРј РїРѕРєР° РЅРµ РїРѕР»СѓС‡РёРј РґР°РЅРЅС‹Рµ РѕС‚ СЃРµСЂРІРµСЂР°,
+	--	Р»РёР±Рѕ РїРѕРєР° РЅРµ Р·Р°РєРѕРЅС‡РёС‚СЃСЏ РІСЂРµРјСЏ РѕР¶РёРґР°РЅРёСЏ (РєРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРїС‹С‚РѕРє)
 	while ds:Size() == 0 and try_count < 1000 do
 		sleep(100)
 		try_count = try_count + 1
 	end
-	-- Если от сервера пришла ошибка, то выведем ее и прервем выполнение
+	-- Р•СЃР»Рё РѕС‚ СЃРµСЂРІРµСЂР° РїСЂРёС€Р»Р° РѕС€РёР±РєР°, С‚Рѕ РІС‹РІРµРґРµРј РµРµ Рё РїСЂРµСЂРІРµРј РІС‹РїРѕР»РЅРµРЅРёРµ
 	if error_desc ~= nil and error_desc ~= "" then
-		message("Ошибка получения таблицы свечей:" .. error_desc)
+		message("РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ С‚Р°Р±Р»РёС†С‹ СЃРІРµС‡РµР№:" .. error_desc)
 		return 0
 	elseif ds:Size() < p_bars + center then
-		message("Недостаточно свечей!")
+		message("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЃРІРµС‡РµР№!")
 		return 0
 	else
 		local fractals = getFrac()
-		message("Получено свечей: "..tostring(ds:Size()).."\n"..
-			"Тренд\n"..
-			"По Доу: "..defTrendDow(fractals).."\n"..
-			"По Вильямсу: "..defTrendWilliams(fractals))
+		message("РџРѕР»СѓС‡РµРЅРѕ СЃРІРµС‡РµР№: "..tostring(ds:Size()).."\n"..
+			"РўСЂРµРЅРґ\n"..
+			"РџРѕ Р”РѕСѓ: "..defTrendDow(fractals).."\n"..
+			"РџРѕ Р’РёР»СЊСЏРјСЃСѓ: "..defTrendWilliams(fractals))
 	end
 		
 --  while is_run do
@@ -53,20 +53,20 @@ function OnStop(stop_flag)
 end
 ]]--
 
-function getFrac() -- Возвращает индексы фракталов в обратном порядке
-	-- Создаем таблицу для нижних и верхних фракталов (при этом порядок будет обратный, так как начинаем рассматривать интервал с конца)
+function getFrac() -- Р’РѕР·РІСЂР°С‰Р°РµС‚ РёРЅРґРµРєСЃС‹ С„СЂР°РєС‚Р°Р»РѕРІ РІ РѕР±СЂР°С‚РЅРѕРј РїРѕСЂСЏРґРєРµ
+	-- РЎРѕР·РґР°РµРј С‚Р°Р±Р»РёС†Сѓ РґР»СЏ РЅРёР¶РЅРёС… Рё РІРµСЂС…РЅРёС… С„СЂР°РєС‚Р°Р»РѕРІ (РїСЂРё СЌС‚РѕРј РїРѕСЂСЏРґРѕРє Р±СѓРґРµС‚ РѕР±СЂР°С‚РЅС‹Р№, С‚Р°Рє РєР°Рє РЅР°С‡РёРЅР°РµРј СЂР°СЃСЃРјР°С‚СЂРёРІР°С‚СЊ РёРЅС‚РµСЂРІР°Р» СЃ РєРѕРЅС†Р°)
 	local fractals = {
 		low = {},
 		high = {}
 	}
-	-- Определяем общее число полученных свечей (= индексу последней свечки)
+	-- РћРїСЂРµРґРµР»СЏРµРј РѕР±С‰РµРµ С‡РёСЃР»Рѕ РїРѕР»СѓС‡РµРЅРЅС‹С… СЃРІРµС‡РµР№ (= РёРЅРґРµРєСЃСѓ РїРѕСЃР»РµРґРЅРµР№ СЃРІРµС‡РєРё)
 	local count = ds:Size()
-	-- Последнюю свечу исключаем
+	-- РџРѕСЃР»РµРґРЅСЋСЋ СЃРІРµС‡Сѓ РёСЃРєР»СЋС‡Р°РµРј
 	local i = count - 1
-	-- Начинаем с конца промежутка
-	while (i >= count - p_bars - 1)  do -- p_bars-свечей без учёта последней
+	-- РќР°С‡РёРЅР°РµРј СЃ РєРѕРЅС†Р° РїСЂРѕРјРµР¶СѓС‚РєР°
+	while (i >= count - p_bars - 1)  do -- p_bars-СЃРІРµС‡РµР№ Р±РµР· СѓС‡С‘С‚Р° РїРѕСЃР»РµРґРЅРµР№
 		
-		-- Фрактал вверх
+		-- Р¤СЂР°РєС‚Р°Р» РІРІРµСЂС…
 		if fractals.high[#fractals.high] == nil or fractals.high[#fractals.high] > i  then
 			local found = false
 			local current = ds:H(i-center)
@@ -83,7 +83,7 @@ function getFrac() -- Возвращает индексы фракталов в обратном порядке
 			end
 		end
 		
-		-- Фрактал вниз
+		-- Р¤СЂР°РєС‚Р°Р» РІРЅРёР·
 		if fractals.low[#fractals.low] == nil or fractals.low[#fractals.low] > i  then
 			local found = false
 			local current = ds:L(i-center)
@@ -97,7 +97,7 @@ function getFrac() -- Возвращает индексы фракталов в обратном порядке
 			end
 			if found then
 				fractals.low[#fractals.low+1] = i
-				if fractals.high[#fractals.high] == i then -- В случае двунаправленного фрактала
+				if fractals.high[#fractals.high] == i then -- Р’ СЃР»СѓС‡Р°Рµ РґРІСѓРЅР°РїСЂР°РІР»РµРЅРЅРѕРіРѕ С„СЂР°РєС‚Р°Р»Р°
 					i = i - 2
 				end
 			end
@@ -110,8 +110,8 @@ end
 
 function defTrendWilliams(fractals) 
 	local count = ds:Size()
-	local trend = "отсутствует"
-	-- Определение пробитий подряд для каждого вида фракталов
+	local trend = "РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚"
+	-- РћРїСЂРµРґРµР»РµРЅРёРµ РїСЂРѕР±РёС‚РёР№ РїРѕРґСЂСЏРґ РґР»СЏ РєР°Р¶РґРѕРіРѕ РІРёРґР° С„СЂР°РєС‚Р°Р»РѕРІ
 	br = {
 		h = 0, 
 		l = 0
@@ -120,39 +120,39 @@ function defTrendWilliams(fractals)
 	local hi = #fractals.high 
 	local li = #fractals.low
 	for i = count - p_bars - 1, count - 1 do 
-		-- Могут быть nil
+		-- РњРѕРіСѓС‚ Р±С‹С‚СЊ nil
 		local hF = fractals.high[hi]
 		local next_hF = fractals.high[hi-1]
 		
 		local lF = fractals.low[li]
 		local next_lF = fractals.low[li-1]
 		
-		-- Проверка для верхних фракталов
+		-- РџСЂРѕРІРµСЂРєР° РґР»СЏ РІРµСЂС…РЅРёС… С„СЂР°РєС‚Р°Р»РѕРІ
 		if hF ~= nil and i > hF then
-			if i == next_hF then -- Достижение следующего фрактала
+			if i == next_hF then -- Р”РѕСЃС‚РёР¶РµРЅРёРµ СЃР»РµРґСѓСЋС‰РµРіРѕ С„СЂР°РєС‚Р°Р»Р°
 				hi = hi - 1
 			end
-			if ds:H(i) > ds:H(hF) then -- Пробитие верхнего фрактала
-				br.h = br.h + 1 -- Фиксирование пробития
+			if ds:H(i) > ds:H(hF) then -- РџСЂРѕР±РёС‚РёРµ РІРµСЂС…РЅРµРіРѕ С„СЂР°РєС‚Р°Р»Р°
+				br.h = br.h + 1 -- Р¤РёРєСЃРёСЂРѕРІР°РЅРёРµ РїСЂРѕР±РёС‚РёСЏ
 				if br.h >= 2 then
-					if lastChange == "high" then -- Два подряд пробития вверх (Возможные случаи: *_**;_**; ** -> *)
-						trend = "восходящий"
+					if lastChange == "high" then -- Р”РІР° РїРѕРґСЂСЏРґ РїСЂРѕР±РёС‚РёСЏ РІРІРµСЂС… (Р’РѕР·РјРѕР¶РЅС‹Рµ СЃР»СѓС‡Р°Рё: *_**;_**; ** -> *)
+						trend = "РІРѕСЃС…РѕРґСЏС‰РёР№"
 						br.h = 1 
 						br.l = 0
-					elseif br.l == 2 then -- Чередование пробитий (Возможные случаи: _*_* -> _*)
-						trend = "горизонтальный"
+					elseif br.l == 2 then -- Р§РµСЂРµРґРѕРІР°РЅРёРµ РїСЂРѕР±РёС‚РёР№ (Р’РѕР·РјРѕР¶РЅС‹Рµ СЃР»СѓС‡Р°Рё: _*_* -> _*)
+						trend = "РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№"
 						br.h = 1
 						br.l = 1
 					end
 				end
-				if i ~= next_hF then -- Во избежание двойного удаления
+				if i ~= next_hF then -- Р’Рѕ РёР·Р±РµР¶Р°РЅРёРµ РґРІРѕР№РЅРѕРіРѕ СѓРґР°Р»РµРЅРёСЏ
 					hi = hi - 1
 				end
 				lastChange = "high"
 			end
 		end
 		
-		-- Проверка для фракталов вниз 
+		-- РџСЂРѕРІРµСЂРєР° РґР»СЏ С„СЂР°РєС‚Р°Р»РѕРІ РІРЅРёР· 
 		if lF ~= nil and i > lF then
 			if i == next_lF then 
 				li = li - 1
@@ -160,12 +160,12 @@ function defTrendWilliams(fractals)
 			if ds:L(i) < ds:L(lF) then
 				br.l = br.l + 1
 				if br.l >= 2 then
-					if lastChange == "low" then -- Два подряд пробития вниз (Возможные случаи: _*_ _;*_ _; _ _ -> _)
-						trend = "нисходящий"
+					if lastChange == "low" then -- Р”РІР° РїРѕРґСЂСЏРґ РїСЂРѕР±РёС‚РёСЏ РІРЅРёР· (Р’РѕР·РјРѕР¶РЅС‹Рµ СЃР»СѓС‡Р°Рё: _*_ _;*_ _; _ _ -> _)
+						trend = "РЅРёСЃС…РѕРґСЏС‰РёР№"
 						br.l = 1
 						br.h = 0
-					elseif br.h == 2 then -- Чередование пробитий (Возможные случаи: *_*_ -> *_)
-						trend = "горизонтальный"
+					elseif br.h == 2 then -- Р§РµСЂРµРґРѕРІР°РЅРёРµ РїСЂРѕР±РёС‚РёР№ (Р’РѕР·РјРѕР¶РЅС‹Рµ СЃР»СѓС‡Р°Рё: *_*_ -> *_)
+						trend = "РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№"
 						br.h = 1
 						br.l = 1
 					end
@@ -182,12 +182,12 @@ end
 
 function defTrendDow(fractals)
 	local count = ds:Size()
-	local trend = "отсутствует"
+	local trend = "РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚"
 	local hi = #fractals.high - 1 
 	local li = #fractals.low - 1
 
 	for i = math.min(hi,li), count - 1 do 
-		-- Могут быть nil
+		-- РњРѕРіСѓС‚ Р±С‹С‚СЊ nil
 		local hF = fractals.high[hi]
 		local prev_hF = fractals.high[hi+1]
 		local next_hF = fractals.high[hi-1]
@@ -200,9 +200,9 @@ function defTrendDow(fractals)
 			if i == next_hF then
 				hi = hi - 1
 			end
-			if ds:H(i) > ds:H(hF) then -- Если локальный максимум пробит				
-				if lF ~= nil and ds:L(prev_lF) < ds:L(lF) then -- Требования двух (!) точек
-					trend = "восходящий"
+			if ds:H(i) > ds:H(hF) then -- Р•СЃР»Рё Р»РѕРєР°Р»СЊРЅС‹Р№ РјР°РєСЃРёРјСѓРј РїСЂРѕР±РёС‚				
+				if lF ~= nil and ds:L(prev_lF) < ds:L(lF) then -- РўСЂРµР±РѕРІР°РЅРёСЏ РґРІСѓС… (!) С‚РѕС‡РµРє
+					trend = "РІРѕСЃС…РѕРґСЏС‰РёР№"
 				end
 				if i~= next_hF then
 					hi = hi - 1
@@ -216,7 +216,7 @@ function defTrendDow(fractals)
 			end
 			if ds:L(i) < ds:L(lF) then
 				if hF ~= nil and ds:H(prev_hF) > ds:H(hF) then
-					trend = "нисходящий"
+					trend = "РЅРёСЃС…РѕРґСЏС‰РёР№"
 				end
 				if i~= next_lF then
 					li = li - 1
