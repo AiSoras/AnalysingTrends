@@ -31,7 +31,7 @@ function main()
 		message("Ошибка получения таблицы свечей:" .. error_desc)
 		return 0
 	elseif ds:Size() < p_bars + center then
-		message("Недостаточно свечей!")
+		message("Недостаточно свечей! "..tostring(ds:Size()))
 		return 0
 	else
 		local fractals = getFrac()
@@ -71,7 +71,7 @@ function getFrac() -- Возвращает индексы фракталов в 
 			local found = false
 			local current = ds:H(i-center)
 			for j = 1, center do
-				if current >= math.max(ds:H(i-center-j),ds:H(i-center+j)) then
+				if current >= ds:H(i-center-j) and current > ds:H(i-center+j) then
 					found = true
 				else
 					found = false
@@ -88,7 +88,7 @@ function getFrac() -- Возвращает индексы фракталов в 
 			local found = false
 			local current = ds:L(i-center)
 			for j = 1, center do
-				if current >= math.min(ds:L(i-center-j),ds:L(i-center+j)) then
+				if current <= ds:L(i-center-j) and current < ds:L(i-center+j) then
 					found = true
 				else
 					found = false
