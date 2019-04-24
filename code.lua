@@ -1,8 +1,15 @@
-p_classcode = "QJSIM"
-p_seccode = "SBER" 
-p_interval = INTERVAL_M4 -- Временной интервал
-p_bars = 140 -- Количество баров
+p_classcode = "TQBR" -- Код класса
+p_seccode = "SBER" -- Код бумаги 
+p_interval = INTERVAL_D1 -- Временной интервал
+p_bars = 50 -- Количество баров
 p_range = 5 -- Размер фрактала
+fileName = "log.txt"
+filePath = "C:\\Users\\<youracc>\\Desktop\\"
+
+intervals = {INTERVAL_TICK, INTERVAL_M1, INTERVAL_M1, INTERVAL_M3, INTERVAL_M4,
+	INTERVAL_M5, INTERVAL_M6, INTERVAL_M10, INTERVAL_M15, INTERVAL_M20, INTERVAL_M30,
+	INTERVAL_H1, INTERVAL_H2, INTERVAL_H4, INTERVAL_D1, INTERVAL_W1, INTERVAL_MN1}	
+
 
 if(p_range % 2 == 0) then
 	p_range = p_range + 1
@@ -22,7 +29,7 @@ function main()
 	local try_count = 0
 	-- Ждем пока не получим данные от сервера,
 	--	либо пока не закончится время ожидания (количество попыток)
-	while ds:Size() == 0 and try_count < 1000 do
+	while ds == nil and try_count < 100 do
 		sleep(100)
 		try_count = try_count + 1
 	end
@@ -30,30 +37,25 @@ function main()
 	if error_desc ~= nil and error_desc ~= "" then
 		message("Ошибка получения таблицы свечей:" .. error_desc)
 		return 0
-	elseif ds:Size() < p_bars + center then
+	elseif ds:Size() < p_bars + p_range then
 		message("Недостаточно свечей! "..tostring(ds:Size()))
 		return 0
 	else
 		local fractals = getFrac()
-		message("Получено свечей: "..tostring(ds:Size()).."\n"..
-			"Тренд\n"..
+		message("Получено свечей: "..tostring(ds:Size()).."\n\n"..
+			"\tТренд\n\n"..
 			"По Доу: "..defTrendDow(fractals).."\n"..
 			"По Вильямсу: "..defTrendWilliams(fractals))
 	end
-		
---  while is_run do
-		     		
---	end
 end
 
---[[ is_run = true    
-
-function OnStop(stop_flag)
-	is_run = false
+function saveToFile(str)
+	local file = io.open(filePath..fileName,"a") -- режим записи в файл с добавлением к содержимому файла 
+	file:write(str.."\n")
+	file:close()
 end
-]]--
 
-function getFrac() -- Возвращает индексы фракталов в обратном порядке
+function getFrac() -- Возвращает индексы вершин фракталов в обратном порядке
 	-- Создаем таблицу для нижних и верхних фракталов (при этом порядок будет обратный, так как начинаем рассматривать интервал с конца)
 	local fractals = {
 		low = {},
@@ -79,7 +81,8 @@ function getFrac() -- Возвращает индексы фракталов в 
 				end
 			end
 			if found then
-				fractals.high[#fractals.high+1] = i
+				fractals.high[#fractals.high+1] = i - center -- Сохраняем центр фрактала вверх
+				saveToFile("Фрактал вверх\n\t"..tostring(ds:T(i - center).day).." "..tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min).."\n\t\tЗначение: "..tostring(ds:H(i - center)))				
 			end
 		end
 		
@@ -96,9 +99,10 @@ function getFrac() -- Возвращает индексы фракталов в 
 				end
 			end
 			if found then
-				fractals.low[#fractals.low+1] = i
-				if fractals.high[#fractals.high] == i then -- В случае двунаправленного фрактала
-					i = i - 2
+				fractals.low[#fractals.low+1] = i - center -- Сохраняем центр фрактала вверх
+				saveToFile("Фрактал вниз\n\t"..tostring(ds:T(i - center).day).." "..tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min).."\n\t\tЗначение: "..tostring(ds:L(i - center)))
+				if fractals.high[#fractals.high] == i - center then -- В случае двунаправленного фрактала 
+					i = i - p_range
 				end
 			end
 		end
