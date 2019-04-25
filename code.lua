@@ -140,7 +140,8 @@ function getFrac() -- Возвращает индексы вершин фрак�
 			end
 			if found then
 				fractals.high[#fractals.high+1] = i - center -- Сохраняем центр фрактала вверх
-				saveToFile("[ Up ] "..tostring(ds:T(i - center).month).."m "..tostring(ds:T(i - center).month).."m "..tostring(ds:T(i - center).day).."d "..
+				saveToFile("[ Up ] "..tostring(ds:T(i - center).month).."m "..
+					tostring(ds:T(i - center).day).."d "..
 					tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min)..
 					"\t\tHigh: "..tostring(ds:H(i - center)))				
 			end
@@ -160,7 +161,8 @@ function getFrac() -- Возвращает индексы вершин фрак�
 			end
 			if found then
 				fractals.low[#fractals.low+1] = i - center -- Сохраняем центр фрактала вверх
-				saveToFile("[Down] "..tostring(ds:T(i - center).month).."m "..tostring(ds:T(i - center).day).."d "..
+				saveToFile("[Down] "..tostring(ds:T(i - center).month).."m "..
+					tostring(ds:T(i - center).day).."d "..
 					tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min)..
 					"\t\tLow: "..tostring(ds:L(i - center)))
 				if fractals.high[#fractals.high] == i - center then -- В случае двунаправленного фрактала 
@@ -178,7 +180,7 @@ function getFrac() -- Возвращает индексы вершин фрак�
 		i = i - 1	
 	end	
 	return fractals
-end	
+end
 
 function defTrendWilliams(fractals) 
 	local count = ds:Size()
