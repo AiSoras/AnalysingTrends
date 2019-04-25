@@ -1,7 +1,7 @@
 p_classcode = "TQBR" -- Код класса
 p_seccode = "SBER" -- Код бумаги 
 p_interval = INTERVAL_D1 -- Временной интервал
-p_bars = 50 -- Количество баров
+p_bars = 140 -- Количество баров
 p_range = 5 -- Размер фрактала
 fileName = "log.txt"
 filePath = "C:\\Users\\<youracc>\\Desktop\\"
@@ -24,7 +24,7 @@ center = math.floor(p_range/2)
 
 function main()
 	-- Создаем таблицу со всеми свечами нужного интервала, класса и кода	
-	ds, error_desc = CreateDataSource(p_classcode,p_seccode,p_interval)	
+	ds, error_desc = CreateDataSource(p_classcode, p_seccode, p_interval)	
 	-- Ограничиваем количество попыток (времени) ожидания получения данных от сервера
 	local try_count = 0
 	-- Ждем пока не получим данные от сервера,
@@ -41,11 +41,69 @@ function main()
 		message("Недостаточно свечей! "..tostring(ds:Size()))
 		return 0
 	else
+		saveToFile("The program is running! "..os.date("%b %d %H:%M:%S").."\n") 
 		local fractals = getFrac()
 		message("Получено свечей: "..tostring(ds:Size()).."\n\n"..
 			"\tТренд\n\n"..
 			"По Доу: "..defTrendDow(fractals).."\n"..
 			"По Вильямсу: "..defTrendWilliams(fractals))
+	end
+end
+
+function getIndexByValue(array, value) -- Возвращает индекс первого совпавшего значения в массиве 
+	for ind, val in pairs(array) do
+		if val == value then
+			return ind
+		end	
+	end
+	return nil
+end
+
+function specFrac(frac_time, frac_high, frac_low, frac_interval) -- Определяет, что произошло раньше: low или high
+	local new_interval = intervals[getIndexByValue(intervals,frac_interval)-1]
+	local ds = CreateDataSource(p_classcode, p_seccode, new_interval)
+	local kindle, ind_high, ind_low
+	local try_count = 0	
+	while ds == nil and try_count < 100 do
+		sleep(100)
+		try_count = try_count + 1
+	end	
+	if ds ~= nil then
+		for i = 1, ds:Size() do
+			if ds:T(i) == frac_time then
+				kindle = i
+				break
+			end
+		end
+		if kindle ~= nil then
+			while kindle <= ds:Size() do
+				if ds:H(kindle) == frac_high then
+					ind_high = kindle
+				end
+				if ds:L(kindle) == frac_low then
+					ind_low = kindle
+				end
+				if ind_low ~= nil or ind_high ~= nil then -- На уровне ниже тоже может быть двунаправленный фрактал
+					break
+				end
+				kindle = kindle + 1
+			end
+			if ind_low ~= nil and ind_high ~= nil then
+				if ind_low < ind_high then
+					return "low"
+				elseif ind_low > ind_high then
+					return "high"
+				else -- Если это оказался двунаправленный фрактал, то снова переходим на уровень ниже
+					return specFrac(ds:T(ind_low), frac_low, frac_high, new_interval)
+				end
+			elseif ind_low ~= nil then
+				return "low"
+			elseif ind_high ~= nil then 
+				return "high"
+			end
+		end
+	else 
+		return nil
 	end
 end
 
@@ -82,7 +140,9 @@ function getFrac() -- Возвращает индексы вершин фрак�
 			end
 			if found then
 				fractals.high[#fractals.high+1] = i - center -- Сохраняем центр фрактала вверх
-				saveToFile("Фрактал вверх\n\t"..tostring(ds:T(i - center).day).." "..tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min).."\n\t\tЗначение: "..tostring(ds:H(i - center)))				
+				saveToFile("[ Up ] "..tostring(ds:T(i - center).month).."m "..tostring(ds:T(i - center).month).."m "..tostring(ds:T(i - center).day).."d "..
+					tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min)..
+					"\t\tHigh: "..tostring(ds:H(i - center)))				
 			end
 		end
 		
@@ -100,8 +160,16 @@ function getFrac() -- Возвращает индексы вершин фрак�
 			end
 			if found then
 				fractals.low[#fractals.low+1] = i - center -- Сохраняем центр фрактала вверх
-				saveToFile("Фрактал вниз\n\t"..tostring(ds:T(i - center).day).." "..tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min).."\n\t\tЗначение: "..tostring(ds:L(i - center)))
+				saveToFile("[Down] "..tostring(ds:T(i - center).month).."m "..tostring(ds:T(i - center).day).."d "..
+					tostring(ds:T(i - center).hour)..":"..tostring(ds:T(i - center).min)..
+					"\t\tLow: "..tostring(ds:L(i - center)))
 				if fractals.high[#fractals.high] == i - center then -- В случае двунаправленного фрактала 
+					local spec = specFrac(ds:T(i-center), ds:H(i-center), ds:L(i-center), p_interval)
+					if spec == "low" then
+						fractals.high[#fractals.high] = nil
+					elseif spec == "high" then
+						fractals.low[#fractals.low] = nil
+					end
 					i = i - p_range
 				end
 			end
@@ -120,7 +188,7 @@ function defTrendWilliams(fractals)
 		h = 0, 
 		l = 0
 	}
-	local lastChange = "none"
+	local last_change = "none"
 	local hi = #fractals.high 
 	local li = #fractals.low
 	for i = count - p_bars - 1, count - 1 do 
@@ -139,7 +207,7 @@ function defTrendWilliams(fractals)
 			if ds:H(i) > ds:H(hF) then -- Пробитие верхнего фрактала
 				br.h = br.h + 1 -- Фиксирование пробития
 				if br.h >= 2 then
-					if lastChange == "high" then -- Два подряд пробития вверх (Возможные случаи: *_**;_**; ** -> *)
+					if last_change == "high" then -- Два подряд пробития вверх (Возможные случаи: *_**;_**; ** -> *)
 						trend = "восходящий"
 						br.h = 1 
 						br.l = 0
@@ -152,7 +220,7 @@ function defTrendWilliams(fractals)
 				if i ~= next_hF then -- Во избежание двойного удаления
 					hi = hi - 1
 				end
-				lastChange = "high"
+				last_change = "high"
 			end
 		end
 		
@@ -164,7 +232,7 @@ function defTrendWilliams(fractals)
 			if ds:L(i) < ds:L(lF) then
 				br.l = br.l + 1
 				if br.l >= 2 then
-					if lastChange == "low" then -- Два подряд пробития вниз (Возможные случаи: _*_ _;*_ _; _ _ -> _)
+					if last_change == "low" then -- Два подряд пробития вниз (Возможные случаи: _*_ _;*_ _; _ _ -> _)
 						trend = "нисходящий"
 						br.l = 1
 						br.h = 0
@@ -177,7 +245,7 @@ function defTrendWilliams(fractals)
 				if i ~= next_lF then 
 					li = li - 1
 				end
-				lastChange = "low"
+				last_change = "low"
 			end
 		end	
 	end
