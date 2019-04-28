@@ -1,10 +1,17 @@
+-- Параметры
 p_classcode = "TQBR" -- Код класса
 p_seccode = "SBER" -- Код бумаги 
-p_interval = INTERVAL_D1 -- Временной интервал
+p_interval = INTERVAL_M1 -- Временной интервал
 p_bars = 140 -- Количество баров
 p_range = 5 -- Размер фрактала
-fileName = "log.txt"
-filePath = "C:\\Users\\<youracc>\\Desktop\\"
+
+count -- Число свечей в источнике данных (= индексу последней свечки)
+trend -- Последний зафиксированный тренд
+
+fileName = "log.txt" -- Название файла по умолчанию
+filePath = "C:\\Users\\<uracc>\\Desktop\\" -- Путь к файлам
+
+is_run = true  
 
 intervals = {INTERVAL_TICK, INTERVAL_M1, INTERVAL_M2, INTERVAL_M3, INTERVAL_M4,
 	INTERVAL_M5, INTERVAL_M6, INTERVAL_M10, INTERVAL_M15, INTERVAL_M20, INTERVAL_M30,
@@ -22,7 +29,17 @@ end
 -- Определяем центр фрактала (смещение)	
 center = math.floor(p_range/2)
 
-function main()
+function handleNewKindle (index) -- Обработка новой свечи
+	if index == count + 1 then -- При окончательном формировании последней свечи и появлении новой
+		local fractals = getFrac()
+		local new_trend = defTrendDow(fractals)
+		if new_trend ~= trend then
+			trend = new_trend
+			message("Направление тренда изменилось! Теперь он: "..trend)
+	end
+end
+
+function main() -- Основной поток программы
 	-- Создаем таблицу со всеми свечами нужного интервала, класса и кода	
 	ds, error_desc = CreateDataSource(p_classcode, p_seccode, p_interval)	
 	-- Ограничиваем количество попыток (времени) ожидания получения данных от сервера
@@ -33,6 +50,7 @@ function main()
 		sleep(100)
 		try_count = try_count + 1
 	end
+	ds:SetUpdateCallback(handleNewKindle) -- Задаем свой обработчик при поступлении новой информации из источника
 	-- Если от сервера пришла ошибка, то выведем ее и прервем выполнение
 	if error_desc ~= nil and error_desc ~= "" then
 		message("Ошибка получения таблицы свечей:" .. error_desc)
@@ -43,11 +61,19 @@ function main()
 	else
 		saveToFile("The program is running! "..os.date("%b %d %H:%M:%S").."\n") 
 		local fractals = getFrac()
+		trend = defTrendDow(fractals)
 		message("Получено свечей: "..tostring(ds:Size()).."\n\n"..
 			"\tТренд\n\n"..
-			"По Доу: "..defTrendDow(fractals).."\n"..
-			"По Вильямсу: "..defTrendWilliams(fractals))
+			"По Доу: "..trend)--.."\n"..
+			--"По Вильямсу: "..defTrendWilliams(fractals))
 	end
+	while is_run do
+	end
+	ds:Close()
+end
+
+function OnStop() -- При остановке скрипта
+    is_run = false
 end
 
 function getIndexByValue(array, value) -- Возвращает индекс первого совпавшего значения в массиве 
@@ -107,8 +133,13 @@ function specFrac(frac_time, frac_high, frac_low, frac_interval) -- Опреде
 	end
 end
 
-function saveToFile(str)
-	local file = io.open(filePath..fileName,"a") -- режим записи в файл с добавлением к содержимому файла 
+function saveToFile(str,...) -- По умолчанию сохраняет строку str в файл с названием fileName, можно вторым аргументом задать другое название
+	local file 
+	if arg.n == 0 then
+		file = io.open(filePath..fileName,"a") -- режим записи в файл с добавлением к содержимому файла 
+	else
+		file = io.open(filePath..arg[1],"a")
+	end
 	file:write(str.."\n")
 	file:close()
 end
@@ -119,8 +150,7 @@ function getFrac() -- Возвращает индексы вершин фрак�
 		low = {},
 		high = {}
 	}
-	-- Определяем общее число полученных свечей (= индексу последней свечки)
-	local count = ds:Size()
+	count = ds:Size()
 	-- Последнюю свечу исключаем
 	local i = count - 1
 	-- Начинаем с конца промежутка
@@ -180,20 +210,24 @@ function getFrac() -- Возвращает индексы вершин фрак�
 		i = i - 1	
 	end	
 	return fractals
-end
+end	
 
 function defTrendWilliams(fractals) 
-	local count = ds:Size()
 	local trend = "отсутствует"
 	-- Определение пробитий подряд для каждого вида фракталов
 	br = {
 		h = 0, 
 		l = 0
 	}
+	count = ds:Size()
 	local last_change = "none"
 	local hi = #fractals.high 
 	local li = #fractals.low
-	for i = count - p_bars - 1, count - 1 do 
+	local first_kindle = math.min(fractals.high[hi],fractals.low[li])
+	saveToFile("Williams. Start at "..tostring(ds:T(first_kindle).month).."m "..
+					tostring(ds:T(first_kindle).day).."d "..
+					tostring(ds:T(first_kindle).hour)..":"..tostring(ds:T(first_kindle).min).."\n", "Compare.txt")
+	for i = first_kindle, count - 1 do 
 		-- Могут быть nil
 		local hF = fractals.high[hi]
 		local next_hF = fractals.high[hi-1]
@@ -210,11 +244,25 @@ function defTrendWilliams(fractals)
 				br.h = br.h + 1 -- Фиксирование пробития
 				if br.h >= 2 then
 					if last_change == "high" then -- Два подряд пробития вверх (Возможные случаи: *_**;_**; ** -> *)
-						trend = "восходящий"
+						if trend ~= "восходящий" then
+							local str = "[ Uptrend ] "..tostring(ds:T(i).month).."m "..
+								tostring(ds:T(i).day).."d "..
+								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
+							message(str)
+							saveToFile(str.."\n", "Compare.txt")
+							trend = "восходящий"
+						end
 						br.h = 1 
 						br.l = 0
 					elseif br.l == 2 then -- Чередование пробитий (Возможные случаи: _*_* -> _*)
-						trend = "горизонтальный"
+						if trend ~= "горизонтальный" then
+							local str = "[Flattrend] "..tostring(ds:T(i).month).."m "..
+								tostring(ds:T(i).day).."d "..
+								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
+							message(str)
+							saveToFile(str.."\n", "Compare.txt")
+							trend = "горизонтальный"
+						end
 						br.h = 1
 						br.l = 1
 					end
@@ -235,11 +283,25 @@ function defTrendWilliams(fractals)
 				br.l = br.l + 1
 				if br.l >= 2 then
 					if last_change == "low" then -- Два подряд пробития вниз (Возможные случаи: _*_ _;*_ _; _ _ -> _)
-						trend = "нисходящий"
+						if trend ~= "нисходящий" then
+							local str = "[Downtrend] "..tostring(ds:T(i).month).."m "..
+								tostring(ds:T(i).day).."d "..
+								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
+							message(str)
+							saveToFile(str.."\n", "Compare.txt")
+							trend = "нисходящий"
+						end
 						br.l = 1
 						br.h = 0
 					elseif br.h == 2 then -- Чередование пробитий (Возможные случаи: *_*_ -> *_)
-						trend = "горизонтальный"
+						if trend ~= "горизонтальный" then
+							local str = "[Flattrend] "..tostring(ds:T(i).month).."m "..
+								tostring(ds:T(i).day).."d "..
+								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
+							message(str)
+							saveToFile(str.."\n", "Compare.txt")
+							trend = "горизонтальный"
+						end
 						br.h = 1
 						br.l = 1
 					end
@@ -255,12 +317,15 @@ function defTrendWilliams(fractals)
 end
 
 function defTrendDow(fractals)
-	local count = ds:Size()
+	count = ds:Size()
 	local trend = "отсутствует"
 	local hi = #fractals.high - 1 
 	local li = #fractals.low - 1
-
-	for i = math.min(hi,li), count - 1 do 
+	local first_kindle = math.min(fractals.high[hi],fractals.low[li])
+	saveToFile("Dow. Start at "..tostring(ds:T(first_kindle).month).."m "..
+					tostring(ds:T(first_kindle).day).."d "..
+					tostring(ds:T(first_kindle).hour)..":"..tostring(ds:T(first_kindle).min).."\n", "Compare.txt")
+	for i = first_kindle, count - 1 do 
 		-- Могут быть nil
 		local hF = fractals.high[hi]
 		local prev_hF = fractals.high[hi+1]
@@ -276,7 +341,14 @@ function defTrendDow(fractals)
 			end
 			if ds:H(i) > ds:H(hF) then -- Если локальный максимум пробит				
 				if lF ~= nil and ds:L(prev_lF) < ds:L(lF) then -- Требования двух (!) точек
-					trend = "восходящий"
+					if trend ~= "восходящий" then
+						local str = "[ Uptrend ] "..tostring(ds:T(i).month).."m "..
+							tostring(ds:T(i).day).."d "..
+							tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
+						message(str)
+						saveToFile(str.."\n", "Compare.txt")
+						trend = "восходящий"
+					end
 				end
 				if i~= next_hF then
 					hi = hi - 1
@@ -290,7 +362,14 @@ function defTrendDow(fractals)
 			end
 			if ds:L(i) < ds:L(lF) then
 				if hF ~= nil and ds:H(prev_hF) > ds:H(hF) then
-					trend = "нисходящий"
+					if trend ~= "нисходящий" then
+						local str = "[Downtrend] "..tostring(ds:T(i).month).."m "..
+							tostring(ds:T(i).day).."d "..
+							tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
+						message(str)
+						saveToFile(str.."\n", "Compare.txt")
+						trend = "нисходящий"
+					end
 				end
 				if i~= next_lF then
 					li = li - 1
