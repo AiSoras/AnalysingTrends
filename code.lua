@@ -5,8 +5,8 @@ p_interval = INTERVAL_M1 -- Временной интервал
 p_bars = 140 -- Количество баров
 p_range = 5 -- Размер фрактала
 
-count -- Число свечей в источнике данных (= индексу последней свечки)
-trend -- Последний зафиксированный тренд
+--count -- Число свечей в источнике данных (= индексу последней свечки)
+--trend -- Последний зафиксированный тренд
 
 fileName = "log.txt" -- Название файла по умолчанию
 filePath = "C:\\Users\\<uracc>\\Desktop\\" -- Путь к файлам
@@ -31,11 +31,13 @@ center = math.floor(p_range/2)
 
 function handleNewKindle (index) -- Обработка новой свечи
 	if index == count + 1 then -- При окончательном формировании последней свечи и появлении новой
+		message("Новая свеча! "..index)
 		local fractals = getFrac()
 		local new_trend = defTrendDow(fractals)
 		if new_trend ~= trend then
 			trend = new_trend
 			message("Направление тренда изменилось! Теперь он: "..trend)
+		end
 	end
 end
 
@@ -248,7 +250,6 @@ function defTrendWilliams(fractals)
 							local str = "[ Uptrend ] "..tostring(ds:T(i).month).."m "..
 								tostring(ds:T(i).day).."d "..
 								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
-							message(str)
 							saveToFile(str.."\n", "Compare.txt")
 							trend = "восходящий"
 						end
@@ -259,7 +260,6 @@ function defTrendWilliams(fractals)
 							local str = "[Flattrend] "..tostring(ds:T(i).month).."m "..
 								tostring(ds:T(i).day).."d "..
 								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
-							message(str)
 							saveToFile(str.."\n", "Compare.txt")
 							trend = "горизонтальный"
 						end
@@ -345,7 +345,6 @@ function defTrendDow(fractals)
 						local str = "[ Uptrend ] "..tostring(ds:T(i).month).."m "..
 							tostring(ds:T(i).day).."d "..
 							tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
-						message(str)
 						saveToFile(str.."\n", "Compare.txt")
 						trend = "восходящий"
 					end
@@ -366,7 +365,6 @@ function defTrendDow(fractals)
 						local str = "[Downtrend] "..tostring(ds:T(i).month).."m "..
 							tostring(ds:T(i).day).."d "..
 							tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
-						message(str)
 						saveToFile(str.."\n", "Compare.txt")
 						trend = "нисходящий"
 					end
