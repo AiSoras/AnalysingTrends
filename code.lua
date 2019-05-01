@@ -4,12 +4,17 @@ p_seccode = "SBER" -- Код бумаги
 p_interval = INTERVAL_M1 -- Временной интервал
 p_bars = 140 -- Количество баров
 p_range = 5 -- Размер фрактала
+p_MA_f = 5 -- Быстрая MA (с меньшим периодом)
+p_MA_a = 20 -- Cредняя MA (с промежуточным периодом)
+p_MA_s = 80 -- Медленная MA (с большим периодом)
 
 --count -- Число свечей в источнике данных (= индексу последней свечки)
---trend -- Последний зафиксированный тренд
+--trend_dow -- Последний зафиксированный тренд по Доу
+--trend_williams -- Последний зафиксированный тренд по Вильямсу
+--trend_ma
 
 fileName = "log.txt" -- Название файла по умолчанию
-filePath = "C:\\Users\\<uracc>\\Desktop\\" -- Путь к файлам
+filePath = "C:\\Users\\5otai\\Desktop\\" -- Путь к файлам
 
 is_run = true  
 
@@ -31,14 +36,49 @@ center = math.floor(p_range/2)
 
 function handleNewKindle (index) -- Обработка новой свечи
 	if index == count + 1 then -- При окончательном формировании последней свечи и появлении новой
-		message("Новая свеча! "..index)
 		local fractals = getFrac()
-		local new_trend = defTrendDow(fractals)
-		if new_trend ~= trend then
-			trend = new_trend
-			message("Направление тренда изменилось! Теперь он: "..trend)
+		local new_trend_dow = defTrendDow(fractals)
+		local new_trend_williams = defTrendWilliams(fractals)
+		if new_trend_dow ~= trend_dow or new_trend_williams ~= trend_williams then
+			trend_dow = new_trend_dow
+			trend_williams = new_trend_williams
+			message("Направление тренда изменилось! Теперь он\n"..
+			"По Доу: "..trend_dow.."\n"..
+			"По Вильямсу: "..trend_williams)
 		end
 	end
+end
+
+function SMA(index, period, prev_SMA) -- Простая скользящая средняя (SMA, Simple Moving Average)
+	if prev_SMA == nil then
+		local sum = 0
+		for i = index - period + 1, index do
+			sum = sum + ds:C(i)
+		end
+		return sum/period
+	else
+		return prev_SMA - (ds:C(index - period) - ds:C(index))/period
+	end
+end
+
+function defTrendMA()
+	local trend = "отсутствует"
+	local MA_f, MA_a, MA_s
+	for i = count - p_bars, count - 1 do
+		MA_f = SMA(i, p_MA_f, MA_f)
+		MA_a = SMA(i, p_MA_a, MA_a)
+		MA_s = SMA(i, p_MA_s, MA_s)
+		if MA_a <= MA_f and MA_a >= MA_s then -- Наблюдается тренд, если средняя MA располагается между двумя другими
+			if MA_f > math.max(MA_a, MA_s) and trend ~="восходящий" then
+				trend ="восходящий"
+			elseif MA_f < math.min(MA_a, MA_s) and trend ~="нисходящий" then
+				trend ="нисходящий"
+			end 
+		elseif trend ~="горизонтальный" then
+			trend ="горизонтальный"
+		end				
+	end
+	return trend
 end
 
 function main() -- Основной поток программы
@@ -63,11 +103,15 @@ function main() -- Основной поток программы
 	else
 		saveToFile("The program is running! "..os.date("%b %d %H:%M:%S").."\n") 
 		local fractals = getFrac()
-		trend = defTrendDow(fractals)
-		message("Получено свечей: "..tostring(ds:Size()).."\n\n"..
+		trend_dow = defTrendDow(fractals)
+		trend_williams = defTrendWilliams(fractals)
+		trend_ma = defTrendMA()
+		count = ds:Size()
+		message("Получено свечей: "..tostring(count).."\n\n"..
 			"\tТренд\n\n"..
-			"По Доу: "..trend)--.."\n"..
-			--"По Вильямсу: "..defTrendWilliams(fractals))
+			"По Доу: "..trend_dow.."\n"..
+			"По Вильямсу: "..trend_williams.."\n"..
+			"По скользящим средним: "..trend_ma)
 	end
 	while is_run do
 	end
@@ -221,7 +265,6 @@ function defTrendWilliams(fractals)
 		h = 0, 
 		l = 0
 	}
-	count = ds:Size()
 	local last_change = "none"
 	local hi = #fractals.high 
 	local li = #fractals.low
@@ -287,7 +330,6 @@ function defTrendWilliams(fractals)
 							local str = "[Downtrend] "..tostring(ds:T(i).month).."m "..
 								tostring(ds:T(i).day).."d "..
 								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
-							message(str)
 							saveToFile(str.."\n", "Compare.txt")
 							trend = "нисходящий"
 						end
@@ -298,7 +340,6 @@ function defTrendWilliams(fractals)
 							local str = "[Flattrend] "..tostring(ds:T(i).month).."m "..
 								tostring(ds:T(i).day).."d "..
 								tostring(ds:T(i).hour)..":"..tostring(ds:T(i).min)
-							message(str)
 							saveToFile(str.."\n", "Compare.txt")
 							trend = "горизонтальный"
 						end
@@ -317,7 +358,6 @@ function defTrendWilliams(fractals)
 end
 
 function defTrendDow(fractals)
-	count = ds:Size()
 	local trend = "отсутствует"
 	local hi = #fractals.high - 1 
 	local li = #fractals.low - 1
