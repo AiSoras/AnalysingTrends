@@ -524,7 +524,7 @@ function defTrendMA() -- Определение тренда по скользя
 		MA_f = SMA(i, p_MA_f, MA_f)
 		MA_a = SMA(i, p_MA_a, MA_a)
 		MA_s = SMA(i, p_MA_s, MA_s)
-		if MA_a <= MA_f and MA_a >= MA_s then -- Наблюдается тренд, если средняя MA располагается между двумя другими
+		if (MA_a <= MA_f and MA_a >= MA_s) or (MA_a >= MA_f and MA_a <= MA_s) then -- Наблюдается тренд, если средняя MA располагается между двумя другими
 			if MA_f > math.max(MA_a, MA_s) and trend ~="восходящий" then
 				trend ="восходящий"
 			elseif MA_f < math.min(MA_a, MA_s) and trend ~="нисходящий" then
