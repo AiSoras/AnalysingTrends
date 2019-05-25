@@ -360,7 +360,7 @@ end
 function defTrendWilliams(fractals) -- Определение тренда по Вильямсу
 	local trend = "отсутствует"
 	-- Определение пробитий подряд для каждого вида фракталов
-	br = {
+	local br = {
 		h = 0, 
 		l = 0
 	}
